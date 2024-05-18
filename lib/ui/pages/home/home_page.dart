@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
   List<MaterialColor> cardColors = [
     Colors.pink,
     Colors.amber,
@@ -27,11 +29,18 @@ class _HomePageState extends State<HomePage>
   bool isAnimating = false;
   late Offset outOfBoundsOffset;
   late Data savedData;
+  int count = 0;
   bool isFirstTime = true;
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    );
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       final size = MediaQuery.sizeOf(context);
       outOfBoundsOffset = Offset(size.width * 2, size.height * 2);
@@ -58,6 +67,7 @@ class _HomePageState extends State<HomePage>
           color: cardColors[7],
         ),
       );
+      count = dataList.length;
     });
   }
 
@@ -78,10 +88,18 @@ class _HomePageState extends State<HomePage>
     dataList[dataList.length - 1] = dataList.last.copyWith(
       top: first.top,
       left: first.left,
+      index: count,
       angleInDegrees: first.angleInDegrees,
     );
+    count++;
     isFirstTime = false;
-    setState(() {});
+    _controller.forward(from: 0.0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -112,29 +130,52 @@ class _HomePageState extends State<HomePage>
     dataList.sort((date1, date2) {
       return date2.index.compareTo(date1.index);
     });
-    return Stack(
-      children: [
-        for (int i = 0; i < dataList.length; i++)
-          _buildCard(
-            dataList[i],
-          ),
-      ],
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            for (int i = 0; i < dataList.length; i++)
+              _buildCard(
+                _controller.value,
+                dataList[i],
+              ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildCard(Data data) {
+  Widget _buildCard(double animation, Data data) {
     final width = MediaQuery.sizeOf(context).width;
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 500),
-      top: data.top,
-      left: data.left,
+    final previousIndex = data.index - 1;
+    final previousDataList = dataList.where((element) {
+      return element.index == previousIndex;
+    }).toList();
+    final previousData = previousDataList.firstOrNull;
+    late double top;
+    late double left;
+    late num angle;
+    if (previousData != null) {
+      log('I am running');
+      top = data.top + ((previousData.top - data.top) * animation);
+      left = data.left + ((previousData.left - data.left) * animation);
+      angle = data.angleInDegrees +
+          ((previousData.angleInDegrees - data.angleInDegrees) * animation);
+    } else {
+      top = data.top;
+      left = data.left;
+      angle = data.angleInDegrees.toDouble();
+    }
+    return Positioned(
+      top: top,
+      left: left,
       width: width * 1.6,
       child: Transform.translate(
-        offset: Offset(width * 0.62, 0),
-        child: AnimatedRotation(
-          duration: const Duration(milliseconds: 500),
+        offset: Offset(width * 0.725, 0),
+        child: Transform.rotate(
+          angle: toRadians(angle.toInt()),
           alignment: Alignment.bottomRight,
-          turns: data.angleInDegrees.toDouble() / 360,
           child: Container(
             height: 800,
             width: width * 1.6,
@@ -150,7 +191,12 @@ class _HomePageState extends State<HomePage>
                 ],
               ),
             ),
-            child: Text('${data.index}'),
+            child: Text(
+              '${data.index}',
+              style: TextStyle(
+                fontSize: 100,
+              ),
+            ),
           ),
         ),
       ),
