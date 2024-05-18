@@ -1,6 +1,8 @@
+import 'dart:developer';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:wallet_app/ui/painters/card_painter.dart';
 
 import '../../../data.dart';
 
@@ -11,8 +13,8 @@ class HomePage extends StatefulWidget {
   State createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  List<AnimationController> _controllers = [];
   List<MaterialColor> cardColors = [
     Colors.pink,
     Colors.amber,
@@ -32,6 +34,7 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       final size = MediaQuery.sizeOf(context);
       outOfBoundsOffset = Offset(size.width * 2, size.height * 2);
@@ -58,6 +61,15 @@ class _HomePageState extends State<HomePage>
           color: cardColors[7],
         ),
       );
+      for (final _ in dataList) {
+        final controller = AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 400),
+          upperBound: 1.0,
+          lowerBound: 0.0,
+        );
+        _controllers.add(controller);
+      }
     });
   }
 
@@ -69,6 +81,7 @@ class _HomePageState extends State<HomePage>
         top: savedData.top,
         left: savedData.left,
         angleInDegrees: savedData.angleInDegrees,
+        index: savedData.index,
       );
       savedData = current;
       dataList[i] = newCurrent;
@@ -79,9 +92,25 @@ class _HomePageState extends State<HomePage>
       top: first.top,
       left: first.left,
       angleInDegrees: first.angleInDegrees,
+      index: first.index,
     );
     isFirstTime = false;
-    setState(() {});
+    _moveControllersForward();
+    print('DONE ANIMATING');
+  }
+
+  Future<void> _moveControllersForward() async {
+    for (final controller in _controllers) {
+      await controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -100,7 +129,6 @@ class _HomePageState extends State<HomePage>
       },
       onPanEnd: (details) {
         isAnimating = false;
-        print('DONE ANIMATING');
       },
       child: Scaffold(
         body: _buildBody(),
@@ -124,37 +152,61 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildCard(Data data) {
     final width = MediaQuery.sizeOf(context).width;
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 500),
-      top: data.top,
-      left: data.left,
-      width: width * 1.6,
-      child: Transform.translate(
-        offset: Offset(width * 0.62, 0),
-        child: AnimatedRotation(
-          duration: const Duration(milliseconds: 500),
-          alignment: Alignment.bottomRight,
-          turns: data.angleInDegrees.toDouble() / 360,
-          child: Container(
-            height: 800,
-            width: width * 1.6,
-            decoration: BoxDecoration(
-              boxShadow: kElevationToShadow[1],
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  data.color.shade900,
-                  data.color,
-                  data.color.shade100,
-                ],
-              ),
+    final height = MediaQuery.sizeOf(context).height;
+    final controller = _controllers[data.index];
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        log('Build AGAIN!');
+        return Positioned(
+          // duration: const Duration(milliseconds: 500),
+          top: data.top * controller.value,
+          left: data.left,
+          child: CustomPaint(
+            painter: CardPainter(
+              color: data.color,
+              index: data.index,
             ),
-            child: Text('${data.index}'),
+            child: SizedBox(
+              width: width,
+              height: height,
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+    // final width = MediaQuery.sizeOf(context).width;
+    // return AnimatedPositioned(
+    //   duration: const Duration(milliseconds: 500),
+    //   top: data.top,
+    //   left: data.left,
+    //   width: width * 1.6,
+    //   child: Transform.translate(
+    //     offset: Offset(width * 0.62, 0),
+    //     child: AnimatedRotation(
+    //       duration: const Duration(milliseconds: 500),
+    //       alignment: Alignment.bottomRight,
+    //       turns: data.angleInDegrees.toDouble() / 360,
+    //       child: Container(
+    //         height: 800,
+    //         width: width * 1.6,
+    //         decoration: BoxDecoration(
+    //           boxShadow: kElevationToShadow[1],
+    //           gradient: LinearGradient(
+    //             begin: Alignment.bottomCenter,
+    //             end: Alignment.topCenter,
+    //             colors: [
+    //               data.color.shade900,
+    //               data.color,
+    //               data.color.shade100,
+    //             ],
+    //           ),
+    //         ),
+    //         child: Text('${data.index}'),
+    //       ),
+    //     ),
+    //   ),
+    // );
   }
 
   double toRadians(int degrees) {
