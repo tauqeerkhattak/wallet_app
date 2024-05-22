@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -46,9 +45,11 @@ class _HomePageState extends State<HomePage>
       outOfBoundsOffset = Offset(size.width * 2, size.height * 2);
 
       for (int i = 0; i < cardColors.length; i++) {
-        final top = -(50 * i).toDouble();
+        final top =
+            size.width > 600 ? -(60 * i).toDouble() : -(50 * i).toDouble();
         final left = (15 * i).toDouble();
-        final angleInDegrees = (-25 + (i * 3));
+        final angleInDegrees =
+            size.width > 600 ? (-18 + (i * 3)) : (-25 + (i * 3));
         final data = Data(
           index: i,
           top: top,
@@ -88,18 +89,13 @@ class _HomePageState extends State<HomePage>
     dataList[dataList.length - 1] = dataList.last.copyWith(
       top: first.top,
       left: first.left,
-      index: count,
+      // index: count,
       angleInDegrees: first.angleInDegrees,
     );
     count++;
     isFirstTime = false;
     _controller.forward(from: 0.0);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+    setState(() {});
   }
 
   @override
@@ -130,54 +126,34 @@ class _HomePageState extends State<HomePage>
     dataList.sort((date1, date2) {
       return date2.index.compareTo(date1.index);
     });
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            for (int i = 0; i < dataList.length; i++)
-              _buildCard(
-                _controller.value,
-                dataList[i],
-              ),
-          ],
-        );
-      },
+    return Stack(
+      children: [
+        for (int i = 0; i < dataList.length; i++)
+          _buildCard(
+            _controller.value,
+            dataList[i],
+          ),
+      ],
     );
   }
 
   Widget _buildCard(double animation, Data data) {
     final width = MediaQuery.sizeOf(context).width;
-    final previousIndex = data.index - 1;
-    final previousDataList = dataList.where((element) {
-      return element.index == previousIndex;
-    }).toList();
-    final previousData = previousDataList.firstOrNull;
-    late double top;
-    late double left;
-    late num angle;
-    if (previousData != null) {
-      log('I am running');
-      top = data.top + ((previousData.top - data.top) * animation);
-      left = data.left + ((previousData.left - data.left) * animation);
-      angle = data.angleInDegrees +
-          ((previousData.angleInDegrees - data.angleInDegrees) * animation);
-    } else {
-      top = data.top;
-      left = data.left;
-      angle = data.angleInDegrees.toDouble();
-    }
-    return Positioned(
-      top: top,
-      left: left,
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 500),
+      top: data.top,
+      left: data.left,
       width: width * 1.6,
       child: Transform.translate(
-        offset: Offset(width * 0.725, 0),
+        offset: Offset(
+          width > 600 ? 280 : width * 0.725,
+          width > 600 ? -300 : 0,
+        ),
         child: Transform.rotate(
-          angle: toRadians(angle.toInt()),
+          angle: toRadians(data.angleInDegrees),
           alignment: Alignment.bottomRight,
           child: Container(
-            height: 800,
+            height: width > 600 ? 1200 : 800,
             width: width * 1.6,
             decoration: BoxDecoration(
               boxShadow: kElevationToShadow[1],
@@ -191,12 +167,12 @@ class _HomePageState extends State<HomePage>
                 ],
               ),
             ),
-            child: Text(
-              '${data.index}',
-              style: TextStyle(
-                fontSize: 100,
-              ),
-            ),
+            // child: Text(
+            //   '${data.index}',
+            //   style: TextStyle(
+            //     fontSize: 100,
+            //   ),
+            // ),
           ),
         ),
       ),

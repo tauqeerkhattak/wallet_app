@@ -1,6 +1,7 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
-class Data {
+class Data extends Equatable {
   final int index;
   final double top;
   final double left;
@@ -34,4 +35,7 @@ class Data {
   String toString() {
     return 'INDEX: $index, TOP: $top, LEFT: $left, ANGLE: $angleInDegrees';
   }
+
+  @override
+  List<Object?> get props => [top, left, angleInDegrees, index];
 }
